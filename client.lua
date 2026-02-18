@@ -13,7 +13,7 @@ end
 -- Main thread to handle brake lights for all vehicles
 Citizen.CreateThread(function()
     while true do
-        Citizen.Wait(0) -- Run every frame for smooth brake light response
+        Citizen.Wait(100) -- Check every 100ms for better performance
         
         -- Get all vehicles in the game world
         local vehicles = GetGamePool('CVehicle')
@@ -28,12 +28,9 @@ Citizen.CreateThread(function()
                     local speed = GetEntitySpeed(vehicle)
                     
                     -- Activate brake lights if vehicle is stopped or nearly stopped
+                    -- Only activate, don't deactivate to allow normal brake behavior
                     if speed <= BRAKE_LIGHT_SPEED_THRESHOLD then
                         SetBrakeLights(vehicle, true)
-                    else
-                        -- Let the game handle brake lights normally when moving
-                        -- This allows normal brake behavior when player presses brake
-                        SetBrakeLights(vehicle, false)
                     end
                 end
             end
