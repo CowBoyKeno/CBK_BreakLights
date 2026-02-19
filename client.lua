@@ -2,6 +2,7 @@
 -- Ensures brake lights come on when vehicles are stopped (for both NPCs and players)
 
 local BRAKE_LIGHT_SPEED_THRESHOLD = 0.5 -- Speed threshold in m/s to consider vehicle as stopped
+local NEARBY_RADIUS = 80.0 -- Only process vehicles within this many metres of the player (performance)
 
 -- Function to activate brake lights on a vehicle
 local function SetBrakeLights(vehicle, state)
@@ -10,31 +11,41 @@ local function SetBrakeLights(vehicle, state)
     end
 end
 
--- Main thread to handle brake lights for all vehicles
+-- Main thread: apply brake light state every frame for stopped vehicles so the game doesn't override it
 Citizen.CreateThread(function()
     while true do
-        Citizen.Wait(100) -- Check every 100ms for better performance
-        
-        -- Get all vehicles in the game world
+        Citizen.Wait(0) -- Run every frame so we continuously hold brake lights on (prevents flicker)
+
+        local playerPed = PlayerPedId()
+        if not DoesEntityExist(playerPed) then goto continue end
+
+        local playerCoords = GetEntityCoords(playerPed)
         local vehicles = GetGamePool('CVehicle')
-        
+
         for _, vehicle in ipairs(vehicles) do
             if DoesEntityExist(vehicle) then
-                -- Check if vehicle has a driver (player or NPC)
-                local driver = GetPedInVehicleSeat(vehicle, -1)
-                
-                if driver ~= 0 and DoesEntityExist(driver) then
-                    -- Get vehicle speed
-                    local speed = GetEntitySpeed(vehicle)
-                    
-                    -- Activate brake lights if vehicle is stopped or nearly stopped
-                    -- Only activate, don't deactivate to allow normal brake behavior
-                    if speed <= BRAKE_LIGHT_SPEED_THRESHOLD then
-                        SetBrakeLights(vehicle, true)
-                    end
+                -- Only process vehicles near the player
+                local vehCoords = GetEntityCoords(vehicle)
+                local dx = vehCoords.x - playerCoords.x
+                local dy = vehCoords.y - playerCoords.y
+                local dz = vehCoords.z - playerCoords.z
+                if (dx * dx + dy * dy + dz * dz) > (NEARBY_RADIUS * NEARBY_RADIUS) then
+                    goto next_vehicle
                 end
+
+                local driver = GetPedInVehicleSeat(vehicle, -1)
+                if driver == 0 or not DoesEntityExist(driver) then goto next_vehicle end
+
+                local speed = GetEntitySpeed(vehicle)
+                if speed <= BRAKE_LIGHT_SPEED_THRESHOLD then
+                    SetBrakeLights(vehicle, true)
+                end
+
+                ::next_vehicle::
             end
         end
+
+        ::continue::
     end
 end)
 
