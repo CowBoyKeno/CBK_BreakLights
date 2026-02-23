@@ -1,8 +1,27 @@
 -- FiveM Brake Lights Script
 -- Ensures brake lights come on when vehicles are stopped (for both NPCs and players)
+-- Supports vanilla and modded (add-on) vehicles via configurable class filters
 
-local BRAKE_LIGHT_SPEED_THRESHOLD = 0.5 -- Speed threshold in m/s to consider vehicle as stopped
-local NEARBY_RADIUS = 80.0 -- Only process vehicles within this many metres of the player (performance)
+-- Build a fast hash-keyed lookup table from the modded vehicle override spawn names so
+-- that per-frame checks are O(1) without iterating the config table every tick.
+local moddedOverrides = {}
+local moddedOverrideCount = 0
+for _, name in ipairs(Config.ModdedVehicleOverrides) do
+    moddedOverrides[GetHashKey(name)] = true
+    moddedOverrideCount = moddedOverrideCount + 1
+end
+
+-- Returns true if brake lights should be processed for this vehicle.
+-- Vehicles whose class is excluded in Config.IncludedVehicleClasses are skipped unless
+-- their model is listed in Config.ModdedVehicleOverrides.
+local function ShouldProcessVehicle(vehicle)
+    local class = GetVehicleClass(vehicle)
+    if Config.IncludedVehicleClasses[class] then
+        return true
+    end
+    -- Always include vehicles explicitly listed in ModdedVehicleOverrides
+    return moddedOverrides[GetEntityModel(vehicle)] == true
+end
 
 -- Function to activate brake lights on a vehicle
 local function SetBrakeLights(vehicle, state)
@@ -29,15 +48,18 @@ Citizen.CreateThread(function()
                 local dx = vehCoords.x - playerCoords.x
                 local dy = vehCoords.y - playerCoords.y
                 local dz = vehCoords.z - playerCoords.z
-                if (dx * dx + dy * dy + dz * dz) > (NEARBY_RADIUS * NEARBY_RADIUS) then
+                if (dx * dx + dy * dy + dz * dz) > (Config.NearbyRadius * Config.NearbyRadius) then
                     goto next_vehicle
                 end
+
+                -- Skip vehicle classes that don't have road-going brake lights (boats, planes, etc.)
+                if not ShouldProcessVehicle(vehicle) then goto next_vehicle end
 
                 local driver = GetPedInVehicleSeat(vehicle, -1)
                 if driver == 0 or not DoesEntityExist(driver) then goto next_vehicle end
 
                 local speed = GetEntitySpeed(vehicle)
-                if speed <= BRAKE_LIGHT_SPEED_THRESHOLD then
+                if speed <= Config.BrakeLightSpeedThreshold then
                     SetBrakeLights(vehicle, true)
                 end
 
@@ -54,5 +76,7 @@ AddEventHandler('onClientResourceStart', function(resourceName)
     if GetCurrentResourceName() == resourceName then
         print('^2[Brake Lights]^7 Script started successfully!')
         print('^2[Brake Lights]^7 Brake lights will automatically turn on for stopped vehicles.')
+        print(string.format('^2[Brake Lights]^7 Speed threshold: %.1f m/s | Radius: %.0f m | Modded overrides: %d',
+            Config.BrakeLightSpeedThreshold, Config.NearbyRadius, moddedOverrideCount))
     end
 end)
