@@ -1,4 +1,4 @@
-# FiveM Brake Lights
+# CBK's FiveM Brake Lights
 
 Automatic brake lights for stopped vehicles - works for both player and NPC-driven vehicles, including modded (add-on) vehicles.
 
