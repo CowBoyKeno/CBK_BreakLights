@@ -23,9 +23,9 @@ Modded and add-on vehicles are fully supported. The script filters by vehicle cl
 ## Installation
 
 1. Download or clone this repository
-2. Copy the `FiveM_Brake_lights` folder to your FiveM server's `resources` directory
-3. Add `ensure FiveM_Brake_lights` to your `server.cfg` file
-4. Restart your server or start the resource using `start FiveM_Brake_lights`
+2. Copy the `CBK_BreakLights` folder to your FiveM server's `resources` directory
+3. Add `ensure CBK_BreakLights` to your `server.cfg` file
+4. Restart your server or start the resource using `start CBK_BreakLights`
 
 ## Configuration
 
